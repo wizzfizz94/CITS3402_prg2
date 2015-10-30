@@ -121,6 +121,11 @@ int main(int argc, char const **argv)
 			ver++;
 		} else if (ver == 1){
 			printf("Running new version trail %d...\n",nc+1);
+			/*fork and disguard parent, so MPI can be 
+			called multiple times */ 
+			if(fork() != 0){
+				exit(EXIT_SUCCESS);
+			}
 			new_time[nc]= runOld(argc, argv);
 			printf("Succesfully complete: Time taken: %fsec\n",new_time[nc]);
 			nc++;
