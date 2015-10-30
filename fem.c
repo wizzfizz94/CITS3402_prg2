@@ -65,7 +65,7 @@ int main(int argc, char const **argv)
 	bool error = false;
 
 	//get NSUB, threads, tasks and trails from argument
-	if(argc != 5){
+	if(argc != 6){
 		error = true;
 	} else if((NSUB = atoi(argv[1])) == 0) {
 		printf("Invalid subdivison size.\n");
@@ -85,7 +85,7 @@ int main(int argc, char const **argv)
 	}
 
 	if(error){
-		printf("Usage: ./fem1d [SUB_SIZE] [NL] [NUM_THREADS] [NUM_TASKS] [TRIALS]\n");
+		printf("Usage: ./fem [SUB_SIZE] [NL] [NUM_THREADS] [NUM_TASKS] [TRIALS]\n");
 		exit(EXIT_FAILURE);
 	}
 
