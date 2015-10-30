@@ -1,25 +1,39 @@
-#include "fem_globals.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+#include <omp.h>
+#include <string.h>
+#include <math.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include "mpi.h"
 
 //FUNCTON DECLARTIONS
 /******************************************************************************/
-double runNew();
-static void init ();
-static void output ();
-static void assemble ();
-
-static double ff ( double x );
-static void geometry ();
-static void phi ( int il, double x, double *phii, double *phiix, double xleft, 
-  double xrite );
-static double pp ( double x );
-static void prsys ();
-static double qq ( double x );
-static void solve ();
-static void timestamp ( void );
+int main(int argc, char **argv);
+void init ();
+void output ();
+void assemble ();
+double ff ( double x );
+void geometry ();
+void phi ( int il, double x, double *phii, double *phiix, double xleft, 
+          double xrite );
+double pp ( double x );
+void prsys ();
+double qq ( double x );
+void solve ();
+void timestamp ( void );
 
 //GLOBALS
 /******************************************************************************/
   #define MASTER 0
+
+  long int NSUB;
+  long int NL;
+  int THREADS;
+  int TASKS;
+  FILE *fp_sol;
+  FILE *fp_out;
 
   double *adiag;
   double *aleft;
@@ -43,9 +57,33 @@ static void timestamp ( void );
 /**
 *
 */
-  double runNew(int argc, char **argv){
+  int main(int argc, char **argv){
 
-    if((fp_out = fopen("new_out.txt", "w+")) == NULL || 
+  bool error = false;
+
+  //get NSUB, threads, tasks and trails from argument
+  if(argc != 5){
+    error = true;
+  } else if((NSUB = atoi(argv[1])) == 0) {
+    printf("Invalid subdivison size.\n");
+    error = true;
+  } else if ((NL = atoi(argv[2])) == 0){
+      printf("Invalid base function degree.\n");
+      error = true;
+  } else if ((THREADS = atoi(argv[3])) == 0){
+    printf("Invalid number of threads.\n");
+    error = true;
+  } else if ((TASKS = atoi(argv[4])) == 0){
+    printf("Invalid number of tasks.\n");
+    error = true;
+  }
+
+  if(error){
+    printf("Usage: ./fem [SUB_SIZE] [NL] [NUM_THREADS] [NUM_TASKS]\n");
+    exit(EXIT_FAILURE);
+  }
+
+    if((fp_out = fopen("new_out.txt", "a")) == NULL || 
       	(fp_sol = fopen("new_sol.txt", "a")) == NULL){
       		printf("New Version files not found.\n");
       		exit(EXIT_FAILURE);
@@ -147,11 +185,15 @@ static void timestamp ( void );
   if(rank != MASTER){
     MPI_Finalize();
   }
-  return time_spent;
+
+  FILE *fp_time = fopen("times.txt","a");
+  fprintf(fp_time, "%f\n", time_spent);
+
+  return 0;
 }
 
 /******************************************************************************/
- static void init (){
+  void init (){
   /*
     IBC declares what the boundary conditions are.
   */
@@ -208,7 +250,7 @@ static void timestamp ( void );
   }
 /******************************************************************************/
 
-static void geometry (){
+ void geometry (){
 
    long int i;
     /*
@@ -326,7 +368,7 @@ static void geometry (){
 /**
 *
 */
- static void assemble (){
+  void assemble (){
 
   double aij;
   double he;
@@ -470,7 +512,7 @@ static void geometry (){
   
 /******************************************************************************/
 
-  static double ff ( double x ){
+   double ff ( double x ){
     double value;
 
     value = 0.0;
@@ -479,7 +521,7 @@ static void geometry (){
   }
 /******************************************************************************/
 
-  static void output (){
+   void output (){
 
   	 int i;
 
@@ -542,7 +584,7 @@ static void geometry (){
 }
 /******************************************************************************/
 
- static void phi ( int il, double x, double *phii, double *phiix, double xleft, 
+  void phi ( int il, double x, double *phii, double *phiix, double xleft, 
     double xrite ){
 
     if ( xleft <= x && x <= xrite )
@@ -571,7 +613,7 @@ static void geometry (){
   }
 /******************************************************************************/
 
-static double pp ( double x ){
+ double pp ( double x ){
     double value;
 
     value = 1.0;
@@ -580,7 +622,7 @@ static double pp ( double x ){
   }
 /******************************************************************************/
 
-  static void prsys (){
+   void prsys (){
 
     int i;
 
@@ -602,7 +644,7 @@ static double pp ( double x ){
 /******************************************************************************/
 
 
-  static double qq ( double x ){
+   double qq ( double x ){
     double value;
 
     value = 0.0;
@@ -611,7 +653,7 @@ static double pp ( double x ){
   }
 /******************************************************************************/
 
-  static void solve (){
+   void solve (){
 
     int i;
   /*
@@ -651,11 +693,11 @@ static double pp ( double x ){
   }
 /******************************************************************************/
 
- static void timestamp ( void ){
+  void timestamp ( void ){
     
   # define TIME_SIZE 40
 
-    static char time_buffer[TIME_SIZE];
+     char time_buffer[TIME_SIZE];
     const struct tm *tm;
   //  size_t len;
     time_t now;

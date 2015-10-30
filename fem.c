@@ -1,4 +1,22 @@
-#include "fem_globals.h"
+#define _GNU_SOURCE
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+#include <omp.h>
+#include <string.h>
+#include <math.h>
+#include <stdbool.h>
+#include <unistd.h>
+
+long int NSUB;
+long int NL;
+int THREADS;
+int TASKS;
+int TRIALS;
+
+FILE *fp_sol;
+FILE *fp_out;
+FILE *fp_time;
 
 /**
 *			Computes and returns average of an array of doubles
@@ -96,42 +114,65 @@ int main(int argc, char const **argv)
 	//set number of threads
 	//omp_set_num_threads(THREADS);
 
-	//wipe solutions files
+	//wipe solutions, output & times files
 	fp_sol = fopen("old_sol.txt","w");
 	fclose(fp_sol);
 	fp_sol = fopen("new_sol.txt","w");
 	fclose(fp_sol);
+	fp_out = fopen("old_out.txt","w");
+	fclose(fp_sol);
+	fp_out = fopen("new_out.txt","w");
+	fclose(fp_sol);
+	fp_time = fopen("times.txt","w");
+	fclose(fp_time);
 
 	//time spent on execution for each trail
 	double time_spent[TRIALS];
 
 	int ver = 0;
-	double old_time[TRIALS];
-	double new_time[TRIALS];
 	int oc = 0;
 	int nc = 0;
+
+	char cmdNew[200];
+	char cmdOld[200];
+	sprintf(cmdNew, "./new %ld %ld %d %d",NSUB,NL,THREADS,TASKS);
+	sprintf(cmdOld, "./old %ld %ld",NSUB,NL);
 
 	//toggle between versions and perform TRIALS
 	for(int i=0;i<(TRIALS*2);i++){
 		if(ver == 0){
 			printf("Running old version: trail %d...\n",oc+1);
-			old_time[oc]= runNew(argc, argv);
-			printf("Succesfully complete: Time taken: %fsec\n",old_time[oc]);
+			system(cmdOld);
+			printf("Succesfully complete.\n");
 			oc++;
 			ver++;
 		} else if (ver == 1){
 			printf("Running new version trail %d...\n",nc+1);
-			/*fork and disguard parent, so MPI can be 
-			called multiple times */ 
-			if(fork() != 0){
-				exit(EXIT_SUCCESS);
-			}
-			new_time[nc]= runOld(argc, argv);
-			printf("Succesfully complete: Time taken: %fsec\n",new_time[nc]);
+			system(cmdNew);
+			printf("Succesfully complete.\n");
 			nc++;
 			ver = ver - 1;
 		}
 	}
+
+
+	double old_time[TRIALS];
+	double new_time[TRIALS];
+	bool old = true;
+	FILE *fp_time = fopen("times.txt","r");
+	char *line = NULL;
+	size_t len = 0;
+	int b=0;
+	while(getline(&line,&len,fp_time)!=-1){
+		if(old){
+			sscanf(line,"%lf",&old_time[b]);
+		}else{
+			sscanf(line,"%lf",&new_time[b]);
+			b++;
+		}
+		old = !old;
+	}
+
 
 	//print results
 	printf("********************************** RESULTS ************************************\n");
