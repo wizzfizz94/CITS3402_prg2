@@ -110,10 +110,6 @@ int main(int argc, char const **argv)
   	printf("NSUB = %ld, NL = %ld, threads = %d,tasks = %d, trails = %d\n",
     NSUB,NL,THREADS,TASKS,TRIALS);
 
-
-	//set number of threads
-	//omp_set_num_threads(THREADS);
-
 	//wipe solutions, output & times files
 	fp_sol = fopen("old_sol.txt","w");
 	fclose(fp_sol);
@@ -135,7 +131,7 @@ int main(int argc, char const **argv)
 
 	char cmdNew[200];
 	char cmdOld[200];
-	sprintf(cmdNew, "./new %ld %ld %d %d",NSUB,NL,THREADS,TASKS);
+	sprintf(cmdNew, "mpirun -np %d new %ld %ld %d",TASKS,NSUB,NL,THREADS);
 	sprintf(cmdOld, "./old %ld %ld",NSUB,NL);
 
 	//toggle between versions and perform TRIALS

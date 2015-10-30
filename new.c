@@ -31,7 +31,6 @@ void timestamp ( void );
   long int NSUB;
   long int NL;
   int THREADS;
-  int TASKS;
   FILE *fp_sol;
   FILE *fp_out;
 
@@ -57,12 +56,12 @@ void timestamp ( void );
 /**
 *
 */
-  int main(int argc, char **argv){
+int main(int argc, char **argv){
 
   bool error = false;
 
   //get NSUB, threads, tasks and trails from argument
-  if(argc != 5){
+  if(argc != 4){
     error = true;
   } else if((NSUB = atoi(argv[1])) == 0) {
     printf("Invalid subdivison size.\n");
@@ -73,13 +72,10 @@ void timestamp ( void );
   } else if ((THREADS = atoi(argv[3])) == 0){
     printf("Invalid number of threads.\n");
     error = true;
-  } else if ((TASKS = atoi(argv[4])) == 0){
-    printf("Invalid number of tasks.\n");
-    error = true;
   }
 
   if(error){
-    printf("Usage: ./fem [SUB_SIZE] [NL] [NUM_THREADS] [NUM_TASKS]\n");
+    printf("Usage: mpirun -np [TASKS] new [SUB_SIZE] [NL] [NUM_THREADS]\n");
     exit(EXIT_FAILURE);
   }
 
@@ -103,6 +99,9 @@ void timestamp ( void );
     //START TIMER//
     double begin, end, time_spent;
     begin = omp_get_wtime();
+
+    //set number of threads
+    omp_set_num_threads(THREADS);
 
     /****************** MPI Initialisations ***************/
     int numprocs, rank;
@@ -181,10 +180,8 @@ void timestamp ( void );
     free(xn); 
     free(xquad);
 
-  //finish mpi threads besides master
-  if(rank != MASTER){
-    MPI_Finalize();
-  }
+
+  MPI_Finalize();
 
   FILE *fp_time = fopen("times.txt","a");
   fprintf(fp_time, "%f\n", time_spent);
