@@ -28,6 +28,9 @@ void timestamp ( void );
 /******************************************************************************/
   #define MASTER 0
 
+  int numprocs, rank;
+  MPI_Status status;
+
   long int NSUB;
   long int NL;
   int THREADS;
@@ -104,11 +107,9 @@ int main(int argc, char **argv){
     omp_set_num_threads(THREADS);
 
     /****************** MPI Initialisations ***************/
-    int numprocs, rank;
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Status status;
 
     printf("MPI: Process %d of %d\n", rank, numprocs);
 
@@ -133,10 +134,10 @@ int main(int argc, char **argv){
       fprintf (fp_out, "\n" );
       fprintf (fp_out,"  The interval [XL,XR] is broken into NSUB = %ld subintervals\n", NSUB );
       fprintf (fp_out, "  Number of basis functions per element is NL = %ld\n", NL );
-
-      //Initialize the data.
-      init ();
     }
+
+    //Initialize the data.
+    init ();
 
     //Compute the geometric quantities.
     geometry ();
@@ -214,34 +215,36 @@ int main(int argc, char **argv){
   /*
     Print out the values that have been set.
   */
-    fprintf (fp_out, "\n" );
-    fprintf ( fp_out,"  The equation is to be solved for\n" );
-    fprintf ( fp_out,"  X greater than XL = %f\n", xl );
-    fprintf ( fp_out,"  and less than XR = %f\n", xr );
-    fprintf ( fp_out,"\n" );
-    fprintf (fp_out, "  The boundary conditions are:\n" );
-    fprintf (fp_out, "\n" );
+    if(rank == MASTER){
+      fprintf (fp_out, "\n" );
+      fprintf ( fp_out,"  The equation is to be solved for\n" );
+      fprintf ( fp_out,"  X greater than XL = %f\n", xl );
+      fprintf ( fp_out,"  and less than XR = %f\n", xr );
+      fprintf ( fp_out,"\n" );
+      fprintf (fp_out, "  The boundary conditions are:\n" );
+      fprintf (fp_out, "\n" );
 
-    if ( ibc == 1 || ibc == 3 )
-    {
-      fprintf (fp_out, "  At X = XL, U = %f\n", ul );
-    }
-    else
-    {
-      fprintf ( fp_out,"  At X = XL, U' = %f\n", ul );
-    }
+      if ( ibc == 1 || ibc == 3 )
+      {
+        fprintf (fp_out, "  At X = XL, U = %f\n", ul );
+      }
+      else
+      {
+        fprintf ( fp_out,"  At X = XL, U' = %f\n", ul );
+      }
 
-    if ( ibc == 2 || ibc == 3 )
-    {
-      fprintf (fp_out, "  At X = XR, U = %f\n", ur );
-    }
-    else
-    {
-      fprintf (fp_out, "  At X = XR, U' = %f\n", ur );
-    }
+      if ( ibc == 2 || ibc == 3 )
+      {
+        fprintf (fp_out, "  At X = XR, U = %f\n", ur );
+      }
+      else
+      {
+        fprintf (fp_out, "  At X = XR, U' = %f\n", ur );
+      }
 
-    fprintf (fp_out, "\n" );
-    fprintf (fp_out, "  Number of quadrature points per element is %d\n", nquad );
+      fprintf (fp_out, "\n" );
+      fprintf (fp_out, "  Number of quadrature points per element is %d\n", nquad );
+    }
 
     return;
   }
@@ -249,7 +252,28 @@ int main(int argc, char **argv){
 
  void geometry (){
 
-   long int i;
+  long int i;
+
+  if(rank == MASTER){
+    int offset = 0;
+    int chunkSize;
+    int extraChunkSize;
+    extraChunkSize = NSUB % numprocs;
+    if(extraChunkSize != 0){
+      chunkSize = NSUB / (numprocs-1);
+    }else{
+      chunkSize = NSUB / numprocs;
+      extraChunkSize = chunkSize;
+    }
+
+    for (int i = 0; i < count; ++i)
+    {
+      /* code */
+    }
+
+    MPI_Send()
+  }
+
     /*
       Set the value of XN, the locations of the nodes.
     */
