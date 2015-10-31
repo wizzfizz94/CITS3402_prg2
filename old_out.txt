@@ -1,0 +1,102 @@
+31 October 2015 01:19:01 PM
+
+FEM1D
+  C version
+
+  Solve the two-point boundary value problem
+
+  - d/dX (P dU/dX) + Q U  =  F
+
+  on the interval [XL,XR], specifying
+  the value of U or U' at each end.
+
+  The interval [XL,XR] is broken into NSUB = 8 subintervals
+  Number of basis functions per element is NL = 20
+
+  The equation is to be solved for
+  X greater than XL = 0.000000
+  and less than XR = 1.000000
+
+  The boundary conditions are:
+
+  At X = XL, U = 0.000000
+  At X = XR, U' = 1.000000
+
+  Number of quadrature points per element is 1
+
+  Node      Location
+
+         0        0.000000 
+         1        0.125000 
+         2        0.250000 
+         3        0.375000 
+         4        0.500000 
+         5        0.625000 
+         6        0.750000 
+         7        0.875000 
+         8        1.000000 
+
+Subint    Length
+
+         1        0.125000
+         2        0.125000
+         3        0.125000
+         4        0.125000
+         5        0.125000
+         6        0.125000
+         7        0.125000
+         8        0.125000
+
+Subint    Quadrature point
+
+         1        0.062500
+         2        0.187500
+         3        0.312500
+         4        0.437500
+         5        0.562500
+         6        0.687500
+         7        0.812500
+         8        0.937500
+
+Subint  Left Node  Right Node
+
+         1         0         1
+         2         1         2
+         3         2         3
+         4         3         4
+         5         4         5
+         6         5         6
+         7         6         7
+         8         7         8
+
+  Number of unknowns NU =        8
+
+  Node  Unknown
+
+         0        -1
+         1         1
+         2         2
+         3         3
+         4         4
+         5         5
+         6         6
+         7         7
+         8         8
+
+Printout of tridiagonal linear system:
+
+Equation  ALEFT  ADIAG  ARITE  RHS
+
+         1        0.000000       40.000000      104.000000        0.000000
+         2       16.000000       72.000000      264.000000        0.000000
+         3       64.000000      104.000000      360.000000        0.000000
+         4      144.000000      136.000000      392.000000        0.000000
+         5      256.000000      168.000000      360.000000        0.000000
+         6      400.000000      200.000000      264.000000        0.000000
+         7      576.000000      232.000000      104.000000        0.000000
+         8      392.000000       64.000000        0.000000        8.000000
+
+FEM1D:
+  Normal end of execution.
+
+31 October 2015 01:19:01 PM

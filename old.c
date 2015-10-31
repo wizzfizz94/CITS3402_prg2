@@ -328,6 +328,12 @@ void timestamp ( void );
       fprintf (fp_out, "  %8ld  %8d\n", i, indx[i] );
     }
 
+  printf("OLD CODE XN[i]\n");
+  for (i = 0; i < NSUB; ++i)
+  {
+    printf("%f\n",xn[i]);
+  }
+
     return;
 
 }

@@ -254,134 +254,175 @@ int main(int argc, char **argv){
 
   long int i;
 
-  if(rank == MASTER){
-    int offset = 0;
-    int chunkSize;
-    int extraChunkSize;
-    extraChunkSize = NSUB % numprocs;
-    if(extraChunkSize != 0){
-      chunkSize = NSUB / (numprocs-1);
-    }else{
-      chunkSize = NSUB / numprocs;
-      extraChunkSize = chunkSize;
-    }
-
-    for (int i = 0; i < count; ++i)
-    {
-      /* code */
-    }
-
-    MPI_Send()
+  int offset = 0;
+  int chunkSize;
+  int extraChunkSize;
+  extraChunkSize = NSUB % numprocs;
+  if(extraChunkSize != 0){
+    chunkSize = NSUB / (numprocs-1);
+  }else{
+    chunkSize = NSUB / numprocs;
+    extraChunkSize = chunkSize;
   }
 
-    /*
-      Set the value of XN, the locations of the nodes.
-    */
-      #pragma omp parallel for
-      for ( i = 0; i <= NSUB; i++ )
-      {
-        xn[i]  =  ( ( double ) ( NSUB - i ) * xl 
-                  + ( double )          i   * xr ) 
-                  / ( double ) ( NSUB );
-      }
+  /* master tasks */
+  if(rank == MASTER){
+
+    /* Master sends index too slaves */
+    offset = chunkSize;
+    for (i = 1; i < numprocs; i++)
+    {
+      MPI_Send(&offset, 1, MPI_INT, i, 100, MPI_COMM_WORLD);
+      offset += chunkSize;
+    }
+
+    /* master does its work with openmp */
+    #pragma omp parallel for
+    for ( i = 0; i <chunkSize; i++ )
+    {
+      xn[i]  =  ( ( double ) ( NSUB - i ) * xl 
+                + ( double )          i   * xr ) 
+                / ( double ) ( NSUB );
+    }
+
+    /* not yet parallelized with MPI */
+    #pragma omp parallel for
+    for ( i = 0; i < NSUB; i++ )
+    {
+       // printf("%d\n",omp_get_num_threads());
+      h[i] = xn[i+1] - xn[i];
+      xquad[i] = 0.5 * ( xn[i] + xn[i+1] );
+      node[0+i*2] = i;
+      node[1+i*2] = i + 1;
+      
+    }
+
+    /* master recieves slave data */
+    offset = chunkSize;
+    for (i = 1; i < numprocs-1; i++)
+    {
+      MPI_Recv(&xn[offset],chunkSize,MPI_DOUBLE,i,101,
+        MPI_COMM_WORLD,&status);
+      offset += chunkSize;
+    }
+    MPI_Recv(&xn[offset],extraChunkSize,MPI_DOUBLE,i,101,
+        MPI_COMM_WORLD,&status);
+
+    /* master perform sequentially prints and calculations */
+    fprintf ( fp_out,"\n" );
+    fprintf (fp_out, "  Node      Location\n" );
+    fprintf (fp_out, "\n" );
+    for (i=0;i<=NSUB;i++)
+    {
+        fprintf (fp_out, "  %8ld  %14f \n", i, xn[i] );
+    }
+    fprintf (fp_out, "\n" );
+    fprintf (fp_out, "Subint    Length\n" );
+    fprintf ( fp_out,"\n" );
+    for (i=0;i<=NSUB;i++)
+    {
+        fprintf (fp_out, "  %8ld  %14f\n", i+1, h[i] );
+    }
+    fprintf (fp_out, "\n" );
+    fprintf (fp_out, "Subint    Quadrature point\n" );
+    fprintf ( fp_out,"\n" );
+    for (i=0;i<=NSUB;i++)
+    {
+        fprintf ( fp_out,"  %8ld  %14f\n", i+1, xquad[i] );
+    }
+    fprintf ( fp_out,"\n" );
+    fprintf ( fp_out,"Subint  Left Node  Right Node\n" );
+    fprintf (fp_out, "\n" );
+    for (i=0;i<=NSUB;i++)
+    {
+        fprintf (fp_out, "  %8ld  %8d  %8d\n", i+1, node[0+i*2], node[1+i*2] );
+    }
 
 
-      #pragma omp parallel for
-      for ( i = 0; i < NSUB; i++ )
-      {
-         // printf("%d\n",omp_get_num_threads());
-        h[i] = xn[i+1] - xn[i];
-        xquad[i] = 0.5 * ( xn[i] + xn[i+1] );
-        node[0+i*2] = i;
-        node[1+i*2] = i + 1;
-        
-      }
+  /*
+    Starting with node 0, see if an unknown is associated with
+    the node.  If so, give it an index.
+  */
+    nu = 0;
+  /*
+    Handle first node.
+  */
+    i = 0;
+    if ( ibc == 1 || ibc == 3 )
+    {
+      indx[i] = -1;
+    }
+    else
+    {
+      nu = nu + 1;
+      indx[i] = nu;
+    }
+  /*
+    Handle nodes 1 through nsub-1
+  */
 
-      /* perform prints sequentially */
-      fprintf ( fp_out,"\n" );
-      fprintf (fp_out, "  Node      Location\n" );
-      fprintf (fp_out, "\n" );
-      for (i=0;i<=NSUB;i++)
-      {
-          fprintf (fp_out, "  %8ld  %14f \n", i, xn[i] );
-      }
-      fprintf (fp_out, "\n" );
-      fprintf (fp_out, "Subint    Length\n" );
-      fprintf ( fp_out,"\n" );
-      for (i=0;i<=NSUB;i++)
-      {
-          fprintf (fp_out, "  %8ld  %14f\n", i+1, h[i] );
-      }
-      fprintf (fp_out, "\n" );
-      fprintf (fp_out, "Subint    Quadrature point\n" );
-      fprintf ( fp_out,"\n" );
-      for (i=0;i<=NSUB;i++)
-      {
-          fprintf ( fp_out,"  %8ld  %14f\n", i+1, xquad[i] );
-      }
-      fprintf ( fp_out,"\n" );
-      fprintf ( fp_out,"Subint  Left Node  Right Node\n" );
-      fprintf (fp_out, "\n" );
-      for (i=0;i<=NSUB;i++)
-      {
-          fprintf (fp_out, "  %8ld  %8d  %8d\n", i+1, node[0+i*2], node[1+i*2] );
-      }
+    /* cannot parallelize due to nu */
+    for ( i = 1; i < NSUB; i++ )
+    {
+      nu = nu + 1;
+      indx[i] = nu;
+    }
+  /*
+    Handle the last node.
+  /*/
+    i = NSUB;
 
+    if ( ibc == 2 || ibc == 3 )
+    {
+      indx[i] = -1;
+    }
+    else
+    {
+      nu = nu + 1;
+      indx[i] = nu;
+    }
 
-    /*
-      Starting with node 0, see if an unknown is associated with
-      the node.  If so, give it an index.
-    */
-      nu = 0;
-    /*
-      Handle first node.
-    */
-      i = 0;
-      if ( ibc == 1 || ibc == 3 )
-      {
-        indx[i] = -1;
-      }
-      else
-      {
-        nu = nu + 1;
-        indx[i] = nu;
-      }
-    /*
-      Handle nodes 1 through nsub-1
-    */
+    fprintf ( fp_out,"\n" );
+    fprintf ( fp_out,"  Number of unknowns NU = %8d\n", nu );
+    fprintf (fp_out, "\n" );
+    fprintf (fp_out, "  Node  Unknown\n" );
+    fprintf (fp_out, "\n" );
+    for ( i = 0; i <= NSUB; i++ )
+    {
+      fprintf (fp_out, "  %8ld  %8d\n", i, indx[i] );
+    }
 
-      /* cannot parallelize due to nu */
-      for ( i = 1; i < NSUB; i++ )
-      {
-        nu = nu + 1;
-        indx[i] = nu;
-      }
-    /*
-      Handle the last node.
-    /*/
-      i = NSUB;
+    printf("NEW CODE XN[i]\n");
+    for (i = 0; i < NSUB; ++i)
+    {
+      printf("%f\n",xn[i]);
+    }
+  }
 
-      if ( ibc == 2 || ibc == 3 )
-      {
-        indx[i] = -1;
-      }
-      else
-      {
-        nu = nu + 1;
-        indx[i] = nu;
-      }
+  /* slave tasks */
+  if(rank != MASTER){
 
-      fprintf ( fp_out,"\n" );
-      fprintf ( fp_out,"  Number of unknowns NU = %8d\n", nu );
-      fprintf (fp_out, "\n" );
-      fprintf (fp_out, "  Node  Unknown\n" );
-      fprintf (fp_out, "\n" );
-      for ( i = 0; i <= NSUB; i++ )
-      {
-        fprintf (fp_out, "  %8ld  %8d\n", i, indx[i] );
-      }
+    /* if last proccess, choose odd chunck size */
+    if(rank == numprocs - 1){
+      chunkSize = extraChunkSize;
+    }
 
-      return;
+    /* recieve offset index */
+    MPI_Recv(&offset,1,MPI_INT,MASTER,100,MPI_COMM_WORLD,&status);
+
+    /* slave does its work with openmp */
+    #pragma omp parallel for
+    for ( i = offset; i <chunkSize; i++ )
+    {
+      xn[i]  =  ( ( double ) ( NSUB - i ) * xl 
+                + ( double )          i   * xr ) 
+                / ( double ) ( NSUB );
+    }
+
+    /* slave sends back its data */
+    MPI_Send(&xn[offset],chunkSize,MPI_DOUBLE,
+      MASTER,101,MPI_COMM_WORLD);
+  }
 }
 
 /******************************************************************************/
