@@ -62,6 +62,23 @@ void timestamp ( void );
   double xr;
 
 /******************************************************************************/
+void printState(){
+  printf("\n");
+  printf("ibc %d\n",ibc);
+  printf("nquad %d\n",nquad);
+  printf("nu %d\n",nu);
+  printf("ul %f\n", ul);
+  printf("ur %f\n", ur);
+  printf("xl %f\n", ul);
+  printf("xr %f\n", xr);
+
+  printf("adiag        aleft     arite       f          h         indx    node xn         xquad\n");
+  for (int i = 0; i < NSUB; ++i)
+  {
+    printf("%10f %10f %10f %10f %10f %5d %5d %10f %10f\n",adiag[i],aleft[i],arite[i], f[i], h[i], indx[i], node[i], xn[i], xquad[i]);
+  }
+}
+
 
 /**
 *
@@ -110,12 +127,6 @@ int main(int argc, char **argv){
     double begin, end, time_spent;
     begin = omp_get_wtime();
 
-    /* set up block sizes for MPI work */
-    slaveSize1 = (NSUB+1) / numprocs;
-    masterSize1 = slaveSize1 + ((NSUB+1) % numprocs);
-    slaveSize2 = NSUB / numprocs;
-    masterSize2 = slaveSize2 + (NSUB % numprocs);
-
     //set number of threads
     omp_set_num_threads(THREADS);
 
@@ -123,6 +134,12 @@ int main(int argc, char **argv){
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    /* set up block sizes for MPI work */
+    slaveSize1 = (NSUB+1) / numprocs;
+    masterSize1 = slaveSize1 + ((NSUB+1) % numprocs);
+    slaveSize2 = NSUB / numprocs;
+    masterSize2 = slaveSize2 + (NSUB % numprocs);
 
     printf("MPI: Process %d of %d\n", rank, numprocs);
 
@@ -155,6 +172,8 @@ int main(int argc, char **argv){
     //Compute the geometric quantities.
     geometry ();
     
+    if(rank == MASTER){
+      printState();
     //Assemble the linear system.
     assemble ();
 
@@ -166,6 +185,7 @@ int main(int argc, char **argv){
 
     //Print out the solution.
     output ();
+  }
 
     //Terminate.
     fprintf (fp_out, "\n" );
@@ -305,12 +325,6 @@ void geometry (){
       offset += slaveSize1;
     }
 
-    printf("NEW CODE XN[i]\n");
-    for (i = 0; i <= NSUB; ++i)
-    {
-      printf("%f\n",xn[i]);
-    }
-
     /* update offset to end of new master block */
     offset = masterSize2;
 
@@ -342,22 +356,6 @@ void geometry (){
       MPI_Recv(&xquad[offset],slaveSize2,MPI_DOUBLE,i,104,MPI_COMM_WORLD,&status);
       MPI_Recv(&node[offset*2],slaveSize2*2,MPI_INT,i,105,MPI_COMM_WORLD,&status);
       offset += slaveSize2;
-    }
-
-    printf("NEW CODE H[i]\n");
-    for (i = 0; i < NSUB; ++i)
-    {
-      printf("%f\n",h[i]);
-    }
-    printf("NEW CODE XQUAD[i]\n");
-    for (i = 0; i < NSUB; ++i)
-    {
-      printf("%f\n",xquad[i]);
-    }
-    printf("NEW CODE NODE[i]\n");
-    for (i = 0; i < NSUB; ++i)
-    {
-      printf("%d\n",node[i]);
     }
 
     /* perform prints sequentially */
@@ -667,9 +665,9 @@ void geometry (){
     #pragma omp parallel for
     for ( i = 0; i <= NSUB; i++ )
     {
-    /*
-    If we're at the first node, check the boundary condition.
-    */
+      /*
+      If we're at the first node, check the boundary condition.
+      */
       if ( i == 0 )
       {
         if ( ibc == 1 || ibc == 3 )
@@ -681,9 +679,9 @@ void geometry (){
           u[i] = f[indx[i]-1];
         }
       }
-    /*
-    If we're at the last node, check the boundary condition.
-    */
+      /*
+      If we're at the last node, check the boundary condition.
+      */
       else if ( i == NSUB )
       {
         if ( ibc == 2 || ibc == 3 )
@@ -695,9 +693,9 @@ void geometry (){
           u[i] = f[indx[i]-1];
         }
       }
-    /*
-    Any other node, we're sure the value is stored in F.
-    */
+      /*
+      Any other node, we're sure the value is stored in F.
+      */
       else
       {
         u[i] = f[indx[i]-1];

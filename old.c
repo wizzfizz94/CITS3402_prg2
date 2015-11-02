@@ -51,6 +51,23 @@ void timestamp ( void );
   double xr;
 
 /******************************************************************************/
+void printState(){
+  printf("\n");
+  printf("ibc %d\n",ibc);
+  printf("nquad %d\n",nquad);
+  printf("nu %d\n",nu);
+  printf("ul %f\n", ul);
+  printf("ur %f\n", ur);
+  printf("xl %f\n", ul);
+  printf("xr %f\n", xr);
+
+  printf("adiag        aleft     arite       f          h         indx    node xn         xquad\n");
+  for (int i = 0; i < NSUB; ++i)
+  {
+    printf("%10f %10f %10f %10f %10f %5d %5d %10f %10f\n",adiag[i],aleft[i],arite[i], f[i], h[i], indx[i], node[i], xn[i], xquad[i]);
+  }
+}
+
 
 /**
 *
@@ -116,6 +133,8 @@ void timestamp ( void );
 
     //Compute the geometric quantities.
     geometry ();
+
+    printState();
     
     //Assemble the linear system.
     assemble ();
@@ -277,26 +296,6 @@ void timestamp ( void );
       fprintf (fp_out, "  %8ld  %8d  %8d\n", i+1, node[0+i*2], node[1+i*2] );
     }
 
-    printf("OLD CODE XN[i]\n");
-    for (i = 0; i <= NSUB; ++i)
-    {
-      printf("%f\n",xn[i]);
-    }
-    printf("NEW CODE H[i]\n");
-    for (i = 0; i < NSUB; ++i)
-    {
-      printf("%f\n",h[i]);
-    }
-    printf("NEW CODE XQUAD[i]\n");
-    for (i = 0; i < NSUB; ++i)
-    {
-      printf("%f\n",xquad[i]);
-    }
-    printf("NEW CODE NODE[i]\n");
-    for (i = 0; i < NSUB; ++i)
-    {
-      printf("%d\n",node[i]);
-    }
   /*
     Starting with node 0, see if an unknown is associated with
     the node.  If so, give it an index.
