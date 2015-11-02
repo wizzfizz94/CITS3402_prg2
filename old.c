@@ -133,8 +133,6 @@ void printState(){
 
     //Compute the geometric quantities.
     geometry ();
-
-    printState();
     
     //Assemble the linear system.
     assemble ();

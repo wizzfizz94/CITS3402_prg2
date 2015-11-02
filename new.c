@@ -33,9 +33,9 @@ void timestamp ( void );
 
   /* NSUB + 1 */
   int slaveSize1;
-  int slaveSize2;
-  /* NSUB */
   int masterSize1;
+  /* NSUB */
+  int slaveSize2;
   int masterSize2;
 
   long int NSUB;
@@ -172,20 +172,19 @@ int main(int argc, char **argv){
     //Compute the geometric quantities.
     geometry ();
     
-    if(rank == MASTER){
-      printState();
     //Assemble the linear system.
     assemble ();
 
-    //Print out the linear system.
-    prsys ();
+    if(rank == MASTER){
+      //Print out the linear system.
+      prsys ();
 
-    //Solve the linear system.
-    solve ();
+      //Solve the linear system.
+      solve ();
 
-    //Print out the solution.
-    output ();
-  }
+      //Print out the solution.
+      output ();
+    }
 
     //Terminate.
     fprintf (fp_out, "\n" );
@@ -388,7 +387,6 @@ void geometry (){
       fprintf (fp_out, "  %8ld  %8d  %8d\n", i+1, node[0+i*2], node[1+i*2] );
     }
 
-
     /*
     Starting with node 0, see if an unknown is associated with
     the node.  If so, give it an index.
@@ -491,146 +489,195 @@ void geometry (){
 /**
 *
 */
-  void assemble (){
+void assemble (){
 
-  double aij;
-  double he;
-  int i;
-  int ie;
-  int ig;
-  int il;
-  int iq;
-  int iu;
-  int jg;
-  int jl;
-  int ju;
-  double phii;
-  double phiix;
-  double phij;
-  double phijx;
-  double x;
-  double xleft;
-  double xquade;
-  double xrite;
-    
-    /*
-      Zero out the arrays that hold the coefficients of the matrix
-      and the right hand side.
-    */
-      #pragma omp parallel for
-      for ( i = 0; i < nu; i++ )
-      {
-        f[i] = 0.0;
-        adiag[i] = 0.0;
-        aleft[i] = 0.0;
-        arite[i] = 0.0;
-      }
+  int offset = 0;
+  int slaveSizeNU = nu / numprocs;
+  
+  /* MASTER WORK */
+  if(rank == MASTER){
+    int masterSizeNU = slaveSizeNU + (nu % numprocs);
+    double aij;
+    double he;
+    int i;
+    int ie;
+    int ig;
+    int il;
+    int iq;
+    int iu;
+    int jg;
+    int jl;
+    int ju;
+    double phii;
+    double phiix;
+    double phij;
+    double phijx;
+    double x;
+    double xleft;
+    double xquade;
+    double xrite;
+
+    /* set offset to end of master block */
+    offset = masterSizeNU;
+
+    /* send offsets to slaves */
+    for (int i = 1; i < numprocs; i++)
+    {
+      MPI_Send(&offset,1,MPI_INT,i,110,MPI_COMM_WORLD);
+      offset += slaveSizeNU;
+    }
+
+    /* master does its work with openmp */
+    #pragma omp parallel for
+    for ( i = 0; i < masterSizeNU; i++ )
+    {
+      f[i] = 0.0;
+      adiag[i] = 0.0;
+      aleft[i] = 0.0;
+      arite[i] = 0.0;
+    }
+
+    /* set offset to end of master block */
+    offset = masterSizeNU;
+
+    /* master receives data from slaves */
+    for (int i = 1; i < numprocs; i++)
+    {
+      MPI_Recv(&f[offset],slaveSizeNU,MPI_DOUBLE,i,111,MPI_COMM_WORLD,&status);
+      MPI_Recv(&adiag[offset],slaveSizeNU,MPI_DOUBLE,i,112,MPI_COMM_WORLD,&status);
+      MPI_Recv(&aleft[offset],slaveSizeNU,MPI_DOUBLE,i,113,MPI_COMM_WORLD,&status);
+      MPI_Recv(&arite[offset],slaveSizeNU,MPI_DOUBLE,i,114,MPI_COMM_WORLD,&status);
+      offset += masterSizeNU;
+    }
 
     /*
       For interval number IE,
     */
-      for ( ie = 0; ie < NSUB; ie++ )
-      {
-        he = h[ie];
-        xleft = xn[node[0+ie*2]];
-        xrite = xn[node[1+ie*2]];
-    /*
+    for ( ie = 0; ie < NSUB; ie++ )
+    {
+      he = h[ie];
+      xleft = xn[node[0+ie*2]];
+      xrite = xn[node[1+ie*2]];
+      /*
       consider each quadrature point IQ,
-    */
-        for ( iq = 0; iq < nquad; iq++ )
+      */
+      for ( iq = 0; iq < nquad; iq++ )
+      {
+        xquade = xquad[ie];
+        /*
+        and evaluate the integrals associated with the basis functions
+        for the left, and for the right nodes.
+        */
+        for ( il = 1; il <= NL; il++ )
         {
-          xquade = xquad[ie];
-    /*
-      and evaluate the integrals associated with the basis functions
-      for the left, and for the right nodes.
-    */
-          for ( il = 1; il <= NL; il++ )
+          ig = node[il-1+ie*2];
+          iu = indx[ig] - 1;
+
+          if ( 0 <= iu )
           {
-            ig = node[il-1+ie*2];
-            iu = indx[ig] - 1;
-
-            if ( 0 <= iu )
+            phi ( il, xquade, &phii, &phiix, xleft, xrite );
+            f[iu] = f[iu] + he * ff ( xquade ) * phii;
+            /*
+            Take care of boundary nodes at which U' was specified.
+            */
+            if ( ig == 0 )
             {
-              phi ( il, xquade, &phii, &phiix, xleft, xrite );
-              f[iu] = f[iu] + he * ff ( xquade ) * phii;
-    /*
-      Take care of boundary nodes at which U' was specified.
-    */
-              if ( ig == 0 )
+              x = 0.0;
+              f[iu] = f[iu] - pp ( x ) * ul;
+            }
+            else if ( ig == NSUB )
+            {
+              x = 1.0;
+              f[iu] = f[iu] + pp ( x ) * ur;
+            }
+
+
+
+            /*
+            Evaluate the integrals that take a product of the basis
+            function times itself, or times the other basis function
+            that is nonzero in this interval.
+            */
+            for ( jl = 1; jl <= NL; jl++ )
+            {
+
+              jg = node[jl-1+ie*2];
+
+              ju = indx[jg] - 1;
+
+              phi ( jl, xquade, &phij, &phijx, xleft, xrite );
+
+              aij = he * ( pp ( xquade ) * phiix * phijx 
+               + qq ( xquade ) * phii  * phij   );
+              /*
+              If there is no variable associated with the node, then it's
+              a specified boundary value, so we multiply the coefficient
+              times the specified boundary value and subtract it from the
+              right hand side.
+              */
+
+              if ( ju < 0 )
               {
-                x = 0.0;
-                f[iu] = f[iu] - pp ( x ) * ul;
-              }
-              else if ( ig == NSUB )
-              {
-                x = 1.0;
-                f[iu] = f[iu] + pp ( x ) * ur;
-              }
-
-
-
-    /*
-      Evaluate the integrals that take a product of the basis
-      function times itself, or times the other basis function
-      that is nonzero in this interval.
-    */
-              for ( jl = 1; jl <= NL; jl++ )
-              {
-
-                jg = node[jl-1+ie*2];
-
-                ju = indx[jg] - 1;
-
-                phi ( jl, xquade, &phij, &phijx, xleft, xrite );
-
-                aij = he * ( pp ( xquade ) * phiix * phijx 
-                           + qq ( xquade ) * phii  * phij   );
-    /*
-      If there is no variable associated with the node, then it's
-      a specified boundary value, so we multiply the coefficient
-      times the specified boundary value and subtract it from the
-      right hand side.
-    */
-
-                if ( ju < 0 )
+                if ( jg == 0 )
                 {
-                  if ( jg == 0 )
-                  {
-                    f[iu] = f[iu] - aij * ul;
-                  }
-                  else if ( jg == NSUB )
-                  {               
-                    f[iu] = f[iu] - aij * ur;
-                  }
+                  f[iu] = f[iu] - aij * ul;
                 }
+                else if ( jg == NSUB )
+                {               
+                  f[iu] = f[iu] - aij * ur;
+                }
+              }
 
-    /*
-      Otherwise, we add the coefficient we've just computed to the
-      diagonal, or left or right entries of row IU of the matrix.
-    */
+              /*
+              Otherwise, we add the coefficient we've just computed to the
+              diagonal, or left or right entries of row IU of the matrix.
+              */
+              else
+              {
+                if ( iu == ju )
+                {
+                  adiag[iu] = adiag[iu] + aij;
+                }
+                else if ( ju < iu )
+                {
+                  aleft[iu] = aleft[iu] + aij;
+                }
                 else
                 {
-                  if ( iu == ju )
-                  {
-                    adiag[iu] = adiag[iu] + aij;
-                  }
-                  else if ( ju < iu )
-                  {
-                    aleft[iu] = aleft[iu] + aij;
-                  }
-                  else
-                  {
-                    arite[iu] = arite[iu] + aij;
-                  }
+                  arite[iu] = arite[iu] + aij;
                 }
               }
-             // printf("%d\n",jl );
             }
+            // printf("%d\n",jl );
           }
         }
       }
+    }
+  }
 
-      return;
+  /* SLAVE WORK */
+  if(rank != MASTER){
+
+    /* receive offset */
+    MPI_Recv(&offset,1,MPI_INT,MASTER,110,MPI_COMM_WORLD,&status);
+
+    /* slave does its work with openmp */
+    #pragma omp parallel for
+    for (int i = offset; i < (offset + slaveSizeNU); i++ )
+    {
+      f[i] = 0.0;
+      adiag[i] = 0.0;
+      aleft[i] = 0.0;
+      arite[i] = 0.0;
+    }
+
+    /* slave sends data to master */
+    MPI_Send(&f[offset],slaveSizeNU,MPI_DOUBLE,MASTER,111,MPI_COMM_WORLD);
+    MPI_Send(&adiag[offset],slaveSizeNU,MPI_DOUBLE,MASTER,112,MPI_COMM_WORLD);
+    MPI_Send(&aleft[offset],slaveSizeNU,MPI_DOUBLE,MASTER,113,MPI_COMM_WORLD);
+    MPI_Send(&arite[offset],slaveSizeNU,MPI_DOUBLE,MASTER,114,MPI_COMM_WORLD);
+
+  }
 }
   
 /******************************************************************************/
@@ -644,17 +691,31 @@ void geometry (){
   }
 /******************************************************************************/
 
-   void output (){
+void output (){
 
-     int i;
+  int i;
+  double u[NSUB+1];
+  int offsetF = 0;
+  int offsetIndx = 0;
 
-    double u[NSUB+1];
+  if(rank == MASTER){
 
     fprintf (fp_sol,"\n" );
     fprintf (fp_sol,"  Computed solution coefficients:\n" );
     fprintf (fp_sol, "\n" );
     fprintf (fp_sol,"  Node    X(I)        U(X(I))\n" );
     fprintf (fp_sol,"\n" );
+
+    /* set indx offset to end of master block *
+    offset = masterSize1;*/
+    /* set f offset one back */
+
+    /* send data and offsets to slaves *
+    for (int i = 1; i < numprocs; i++)
+    {
+      MPI_Send(&offset,1,MPI_INT,i,110,MPI_COMM_WORLD);
+      MPI_Send(&)
+    }*/
 
 
     #pragma omp parallel for
@@ -698,12 +759,12 @@ void geometry (){
 
     }
 
-      for ( i = 0; i <= NSUB; i++ )
-      {
-          fprintf ( fp_sol,"  %8d  %8f  %14f\n", i, xn[i], u[i] );
-      }
+    for ( i = 0; i <= NSUB; i++ )
+    {
+        fprintf ( fp_sol,"  %8d  %8f  %14f\n", i, xn[i], u[i] );
+    }
 
-    return;
+  }
 }
 /******************************************************************************/
 
