@@ -276,6 +276,27 @@ void timestamp ( void );
       node[1+i*2] = i + 1;
       fprintf (fp_out, "  %8ld  %8d  %8d\n", i+1, node[0+i*2], node[1+i*2] );
     }
+
+    printf("OLD CODE XN[i]\n");
+    for (i = 0; i <= NSUB; ++i)
+    {
+      printf("%f\n",xn[i]);
+    }
+    printf("NEW CODE H[i]\n");
+    for (i = 0; i < NSUB; ++i)
+    {
+      printf("%f\n",h[i]);
+    }
+    printf("NEW CODE XQUAD[i]\n");
+    for (i = 0; i < NSUB; ++i)
+    {
+      printf("%f\n",xquad[i]);
+    }
+    printf("NEW CODE NODE[i]\n");
+    for (i = 0; i < NSUB; ++i)
+    {
+      printf("%d\n",node[i]);
+    }
   /*
     Starting with node 0, see if an unknown is associated with
     the node.  If so, give it an index.
@@ -327,12 +348,6 @@ void timestamp ( void );
     {
       fprintf (fp_out, "  %8ld  %8d\n", i, indx[i] );
     }
-
-  printf("OLD CODE XN[i]\n");
-  for (i = 0; i < NSUB; ++i)
-  {
-    printf("%f\n",xn[i]);
-  }
 
     return;
 

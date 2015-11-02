@@ -250,26 +250,30 @@ int main(int argc, char **argv){
   }
 /******************************************************************************/
 void geometry (){
+  
   long int i;
   int offset = 0;
-  int slaveSize = (NSUB+1) / numprocs;
-  int masterSize = slaveSize + ((NSUB+1) % numprocs);
+  int slaveSizeXN = (NSUB+1) / numprocs;
+  int masterSizeXN = slaveSizeXN + ((NSUB+1) % numprocs);
+  int slaveSizeH = NSUB / numprocs;
+  int masterSizeH = slaveSizeH + (NSUB % numprocs);
 
   /* MASTER WORK */
   if(rank == MASTER){
 
     /* move offset to end of master block */
-    offset = masterSize;
+    offset = masterSizeXN;
 
     /* send offset to slaves */
     for (int i = 1; i < numprocs; i++)
     {
       MPI_Send(&offset,1,MPI_INT,i,100,MPI_COMM_WORLD);
-      offset += slaveSize;
+      offset += slaveSizeXN;
     }
 
+    /* master does it work on XN with openmp */
     #pragma omp parallel for
-    for ( i = 0; i < masterSize; i++ )
+    for ( i = 0; i < masterSizeXN; i++ )
     {
       xn[i]  =  ( ( double ) ( NSUB - i ) * xl 
       + ( double )          i   * xr ) 
@@ -277,30 +281,67 @@ void geometry (){
     }
 
     /* move offset to end of master block */
-    offset = masterSize;
+    offset = masterSizeXN;
 
     /* receive data from slaves */
     for (int i = 1; i < numprocs; i++)
     {
-      MPI_Recv(&xn[offset],slaveSize,MPI_DOUBLE,i,101,MPI_COMM_WORLD,&status);
-      offset += slaveSize;
+      MPI_Recv(&xn[offset],slaveSizeXN,MPI_DOUBLE,i,101,MPI_COMM_WORLD,&status);
+      offset += slaveSizeXN;
     }
 
     printf("NEW CODE XN[i]\n");
-    for (i = 0; i < NSUB; ++i)
+    for (i = 0; i <= NSUB; ++i)
     {
       printf("%f\n",xn[i]);
     }
 
+    /* update offset to end of new master block */
+    offset = masterSizeH;
 
+    /* send next offset to slaves */
+    for (int i = 1; i < numprocs; i++)
+    {
+      MPI_Send(&offset,1,MPI_INT,i,102,MPI_COMM_WORLD);
+      offset += slaveSizeH;
+    }
+
+    /* master does its work with openmp */
     #pragma omp parallel for
-    for ( i = 0; i < NSUB; i++ )
+    for ( i = 0; i < masterSizeH; i++ )
     {
       // printf("%d\n",omp_get_num_threads());
       h[i] = xn[i+1] - xn[i];
       xquad[i] = 0.5 * ( xn[i] + xn[i+1] );
       node[0+i*2] = i;
       node[1+i*2] = i + 1;
+    }
+
+    /* update offset to end of new master block */
+    offset = masterSizeH;
+
+    /* master gets data */
+    for (int i = 1; i < numprocs; i++)
+    {
+      MPI_Recv(&h[offset],slaveSizeH,MPI_DOUBLE,i,103,MPI_COMM_WORLD,&status);
+      MPI_Recv(&xquad[offset],slaveSizeH,MPI_DOUBLE,i,104,MPI_COMM_WORLD,&status);
+      MPI_Recv(&node[offset],slaveSizeH,MPI_INT,i,105,MPI_COMM_WORLD,&status);
+    }
+
+    printf("NEW CODE H[i]\n");
+    for (i = 0; i < NSUB; ++i)
+    {
+      printf("%f\n",h[i]);
+    }
+    printf("NEW CODE XQUAD[i]\n");
+    for (i = 0; i < NSUB; ++i)
+    {
+      printf("%f\n",xquad[i]);
+    }
+    printf("NEW CODE NODE[i]\n");
+    for (i = 0; i < NSUB; ++i)
+    {
+      printf("%d\n",node[i]);
     }
 
     /* perform prints sequentially */
@@ -396,7 +437,7 @@ void geometry (){
 
     /* slave does work with openmp */
     #pragma omp parallel for
-    for ( i = offset; i < (offset+slaveSize); i++ )
+    for ( i = offset; i < (offset+slaveSizeXN); i++ )
     {
       xn[i]  =  ( ( double ) ( NSUB - i ) * xl 
       + ( double )          i   * xr ) 
@@ -404,7 +445,26 @@ void geometry (){
     }
 
     /* send data to master */
-    MPI_Send(&xn[offset],slaveSize,MPI_DOUBLE,MASTER,101,MPI_COMM_WORLD);
+    MPI_Send(&xn[offset],slaveSizeXN,MPI_DOUBLE,MASTER,101,MPI_COMM_WORLD);
+  
+    /* receive next offset from master */
+    MPI_Recv(&offset,1,MPI_INT,MASTER,102,MPI_COMM_WORLD,&status);
+
+    /* slave does more openmp work */
+    #pragma omp parallel for
+    for ( i = offset; i < (offset + slaveSizeH); i++ )
+    {
+      // printf("%d\n",omp_get_num_threads());
+      h[i] = xn[i+1] - xn[i];
+      xquad[i] = 0.5 * ( xn[i] + xn[i+1] );
+      node[0+i*2] = i;
+      node[1+i*2] = i + 1;
+    }
+
+    /* send data to master for h, xquad and node */
+    MPI_Send(&h[offset],slaveSizeH,MPI_DOUBLE,MASTER,103,MPI_COMM_WORLD);
+    MPI_Send(&xquad[offset],slaveSizeH,MPI_DOUBLE,MASTER,104,MPI_COMM_WORLD);
+    MPI_Send(&node[offset],slaveSizeH,MPI_INT,MASTER,105,MPI_COMM_WORLD);
   }
 }
 
