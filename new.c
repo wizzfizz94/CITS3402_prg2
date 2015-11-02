@@ -83,13 +83,13 @@ int main(int argc, char **argv){
   }
 
     if((fp_out = fopen("new_out.txt", "a")) == NULL || 
-      	(fp_sol = fopen("new_sol.txt", "a")) == NULL){
-      		printf("New Version files not found.\n");
-      		exit(EXIT_FAILURE);
+        (fp_sol = fopen("new_sol.txt", "a")) == NULL){
+            printf("New Version files not found.\n");
+            exit(EXIT_FAILURE);
     }
 
-  	//Allocate array memory
-  	adiag = (double *)malloc(sizeof(double)*(double)(NSUB+1));
+    //Allocate array memory
+    adiag = (double *)malloc(sizeof(double)*(double)(NSUB+1));
     aleft = (double *)malloc(sizeof(double)*(double)(NSUB+1));
     arite = (double *)malloc(sizeof(double)*(double)(NSUB+1));
     f = (double *)malloc(sizeof(double)*(double)(NSUB+1));
@@ -249,104 +249,99 @@ int main(int argc, char **argv){
     return;
   }
 /******************************************************************************/
-
- void geometry (){
-
+void geometry (){
   long int i;
-
   int offset = 0;
-  int chunkSize;
-  int extraChunkSize;
-  extraChunkSize = NSUB % numprocs;
-  if(extraChunkSize != 0){
-    chunkSize = NSUB / (numprocs-1);
-  }else{
-    chunkSize = NSUB / numprocs;
-    extraChunkSize = chunkSize;
-  }
+  int slaveSize = (NSUB+1) / numprocs;
+  int masterSize = slaveSize + ((NSUB+1) % numprocs);
 
-  /* master tasks */
+  /* MASTER WORK */
   if(rank == MASTER){
 
-    /* Master sends index too slaves */
-    offset = chunkSize;
-    for (i = 1; i < numprocs; i++)
+    /* move offset to end of master block */
+    offset = masterSize;
+
+    /* send offset to slaves */
+    for (int i = 1; i < numprocs; i++)
     {
-      MPI_Send(&offset, 1, MPI_INT, i, 100, MPI_COMM_WORLD);
-      offset += chunkSize;
+      MPI_Send(&offset,1,MPI_INT,i,100,MPI_COMM_WORLD);
+      offset += slaveSize;
     }
 
-    /* master does its work with openmp */
     #pragma omp parallel for
-    for ( i = 0; i <chunkSize; i++ )
+    for ( i = 0; i < masterSize; i++ )
     {
       xn[i]  =  ( ( double ) ( NSUB - i ) * xl 
-                + ( double )          i   * xr ) 
-                / ( double ) ( NSUB );
+      + ( double )          i   * xr ) 
+      / ( double ) ( NSUB );
     }
 
-    /* not yet parallelized with MPI */
+    /* move offset to end of master block */
+    offset = masterSize;
+
+    /* receive data from slaves */
+    for (int i = 1; i < numprocs; i++)
+    {
+      MPI_Recv(&xn[offset],slaveSize,MPI_DOUBLE,i,101,MPI_COMM_WORLD,&status);
+      offset += slaveSize;
+    }
+
+    printf("NEW CODE XN[i]\n");
+    for (i = 0; i < NSUB; ++i)
+    {
+      printf("%f\n",xn[i]);
+    }
+
+
     #pragma omp parallel for
     for ( i = 0; i < NSUB; i++ )
     {
-       // printf("%d\n",omp_get_num_threads());
+      // printf("%d\n",omp_get_num_threads());
       h[i] = xn[i+1] - xn[i];
       xquad[i] = 0.5 * ( xn[i] + xn[i+1] );
       node[0+i*2] = i;
       node[1+i*2] = i + 1;
-      
     }
 
-    /* master recieves slave data */
-    offset = chunkSize;
-    for (i = 1; i < numprocs-1; i++)
-    {
-      MPI_Recv(&xn[offset],chunkSize,MPI_DOUBLE,i,101,
-        MPI_COMM_WORLD,&status);
-      offset += chunkSize;
-    }
-    MPI_Recv(&xn[offset],extraChunkSize,MPI_DOUBLE,i,101,
-        MPI_COMM_WORLD,&status);
-
-    /* master perform sequentially prints and calculations */
+    /* perform prints sequentially */
     fprintf ( fp_out,"\n" );
     fprintf (fp_out, "  Node      Location\n" );
     fprintf (fp_out, "\n" );
     for (i=0;i<=NSUB;i++)
     {
-        fprintf (fp_out, "  %8ld  %14f \n", i, xn[i] );
+      fprintf (fp_out, "  %8ld  %14f \n", i, xn[i] );
     }
     fprintf (fp_out, "\n" );
     fprintf (fp_out, "Subint    Length\n" );
     fprintf ( fp_out,"\n" );
     for (i=0;i<=NSUB;i++)
     {
-        fprintf (fp_out, "  %8ld  %14f\n", i+1, h[i] );
+      fprintf (fp_out, "  %8ld  %14f\n", i+1, h[i] );
     }
     fprintf (fp_out, "\n" );
     fprintf (fp_out, "Subint    Quadrature point\n" );
     fprintf ( fp_out,"\n" );
     for (i=0;i<=NSUB;i++)
     {
-        fprintf ( fp_out,"  %8ld  %14f\n", i+1, xquad[i] );
+      fprintf ( fp_out,"  %8ld  %14f\n", i+1, xquad[i] );
     }
     fprintf ( fp_out,"\n" );
     fprintf ( fp_out,"Subint  Left Node  Right Node\n" );
     fprintf (fp_out, "\n" );
     for (i=0;i<=NSUB;i++)
     {
-        fprintf (fp_out, "  %8ld  %8d  %8d\n", i+1, node[0+i*2], node[1+i*2] );
+      fprintf (fp_out, "  %8ld  %8d  %8d\n", i+1, node[0+i*2], node[1+i*2] );
     }
 
 
-  /*
+    /*
     Starting with node 0, see if an unknown is associated with
     the node.  If so, give it an index.
-  */
+    */
     nu = 0;
-  /*
+    /*
     Handle first node.
-  */
+    */
     i = 0;
     if ( ibc == 1 || ibc == 3 )
     {
@@ -357,9 +352,9 @@ int main(int argc, char **argv){
       nu = nu + 1;
       indx[i] = nu;
     }
-  /*
+    /*
     Handle nodes 1 through nsub-1
-  */
+    */
 
     /* cannot parallelize due to nu */
     for ( i = 1; i < NSUB; i++ )
@@ -367,9 +362,9 @@ int main(int argc, char **argv){
       nu = nu + 1;
       indx[i] = nu;
     }
-  /*
+    /*
     Handle the last node.
-  /*/
+    /*/
     i = NSUB;
 
     if ( ibc == 2 || ibc == 3 )
@@ -391,37 +386,25 @@ int main(int argc, char **argv){
     {
       fprintf (fp_out, "  %8ld  %8d\n", i, indx[i] );
     }
-
-    printf("NEW CODE XN[i]\n");
-    for (i = 0; i < NSUB; ++i)
-    {
-      printf("%f\n",xn[i]);
-    }
   }
 
-  /* slave tasks */
+  /* SLAVE WORK */
   if(rank != MASTER){
 
-    /* if last proccess, choose odd chunck size */
-    if(rank == numprocs - 1){
-      chunkSize = extraChunkSize;
-    }
-
-    /* recieve offset index */
+    /* receive offset from master */
     MPI_Recv(&offset,1,MPI_INT,MASTER,100,MPI_COMM_WORLD,&status);
 
-    /* slave does its work with openmp */
+    /* slave does work with openmp */
     #pragma omp parallel for
-    for ( i = offset; i <chunkSize; i++ )
+    for ( i = offset; i < (offset+slaveSize); i++ )
     {
       xn[i]  =  ( ( double ) ( NSUB - i ) * xl 
-                + ( double )          i   * xr ) 
-                / ( double ) ( NSUB );
+      + ( double )          i   * xr ) 
+      / ( double ) ( NSUB );
     }
 
-    /* slave sends back its data */
-    MPI_Send(&xn[offset],chunkSize,MPI_DOUBLE,
-      MASTER,101,MPI_COMM_WORLD);
+    /* send data to master */
+    MPI_Send(&xn[offset],slaveSize,MPI_DOUBLE,MASTER,101,MPI_COMM_WORLD);
   }
 }
 
@@ -585,64 +568,64 @@ int main(int argc, char **argv){
 
    void output (){
 
-  	 int i;
+     int i;
 
-  	double u[NSUB+1];
+    double u[NSUB+1];
 
-  	fprintf (fp_sol,"\n" );
-  	fprintf (fp_sol,"  Computed solution coefficients:\n" );
-  	fprintf (fp_sol, "\n" );
-  	fprintf (fp_sol,"  Node    X(I)        U(X(I))\n" );
-  	fprintf (fp_sol,"\n" );
+    fprintf (fp_sol,"\n" );
+    fprintf (fp_sol,"  Computed solution coefficients:\n" );
+    fprintf (fp_sol, "\n" );
+    fprintf (fp_sol,"  Node    X(I)        U(X(I))\n" );
+    fprintf (fp_sol,"\n" );
 
 
     #pragma omp parallel for
-  	for ( i = 0; i <= NSUB; i++ )
-  	{
-  	/*
-  	If we're at the first node, check the boundary condition.
-  	*/
-  	  if ( i == 0 )
-  	  {
-  	    if ( ibc == 1 || ibc == 3 )
-  	    {
-  	      u[i] = ul;
-  	    }
-  	    else
-  	    {
-  	      u[i] = f[indx[i]-1];
-  	    }
-  	  }
-  	/*
-  	If we're at the last node, check the boundary condition.
-  	*/
-  	  else if ( i == NSUB )
-  	  {
-  	    if ( ibc == 2 || ibc == 3 )
-  	    {
-  	      u[i] = ur;
-  	    }
-  	    else
-  	    {
-  	      u[i] = f[indx[i]-1];
-  	    }
-  	  }
-  	/*
-  	Any other node, we're sure the value is stored in F.
-  	*/
-  	  else
-  	  {
-  	    u[i] = f[indx[i]-1];
-  	  }
+    for ( i = 0; i <= NSUB; i++ )
+    {
+    /*
+    If we're at the first node, check the boundary condition.
+    */
+      if ( i == 0 )
+      {
+        if ( ibc == 1 || ibc == 3 )
+        {
+          u[i] = ul;
+        }
+        else
+        {
+          u[i] = f[indx[i]-1];
+        }
+      }
+    /*
+    If we're at the last node, check the boundary condition.
+    */
+      else if ( i == NSUB )
+      {
+        if ( ibc == 2 || ibc == 3 )
+        {
+          u[i] = ur;
+        }
+        else
+        {
+          u[i] = f[indx[i]-1];
+        }
+      }
+    /*
+    Any other node, we're sure the value is stored in F.
+    */
+      else
+      {
+        u[i] = f[indx[i]-1];
+      }
 
-  	}
+    }
 
       for ( i = 0; i <= NSUB; i++ )
       {
           fprintf ( fp_sol,"  %8d  %8f  %14f\n", i, xn[i], u[i] );
       }
 
-  	return;
+    return;
 }
 /******************************************************************************/
 
@@ -738,7 +721,7 @@ int main(int argc, char **argv){
 
     for ( i = 1; i < nu; i++ )
     {
-    	    //printf("%f\n",f[i]);
+            //printf("%f\n",f[i]);
 
       f[i] = ( f[i] - aleft[i] * f[i-1] ) / adiag[i];
     }

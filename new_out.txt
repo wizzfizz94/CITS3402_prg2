@@ -1,54 +1,4 @@
-
-Printout of tridiagonal linear system:
-
-Equation  ALEFT  ADIAG  ARITE  RHS
-
-
-FEM1D:
-  Normal end of execution.
-
-31 October 2015 01:19:01 PM
-
-Printout of tridiagonal linear system:
-
-Equation  ALEFT  ADIAG  ARITE  RHS
-
-
-FEM1D:
-  Normal end of execution.
-
-31 October 2015 01:19:01 PM
-
-Printout of tridiagonal linear system:
-
-Equation  ALEFT  ADIAG  ARITE  RHS
-
-
-FEM1D:
-  Normal end of execution.
-
-31 October 2015 01:19:01 PM
-
-Printout of tridiagonal linear system:
-
-Equation  ALEFT  ADIAG  ARITE  RHS
-
-
-FEM1D:
-  Normal end of execution.
-
-31 October 2015 01:19:01 PM
-
-Printout of tridiagonal linear system:
-
-Equation  ALEFT  ADIAG  ARITE  RHS
-
-
-FEM1D:
-  Normal end of execution.
-
-31 October 2015 01:19:01 PM
-31 October 2015 01:19:01 PM
+02 November 2015 12:37:46 PM
 
 FEM1D
   C version
@@ -60,8 +10,8 @@ FEM1D
   on the interval [XL,XR], specifying
   the value of U or U' at each end.
 
-  The interval [XL,XR] is broken into NSUB = 8 subintervals
-  Number of basis functions per element is NL = 20
+  The interval [XL,XR] is broken into NSUB = 10 subintervals
+  Number of basis functions per element is NL = 10
 
   The equation is to be solved for
   X greater than XL = 0.000000
@@ -77,38 +27,44 @@ FEM1D
   Node      Location
 
          0        0.000000 
-         1        0.000000 
-         2        0.000000 
-         3        0.000000 
-         4        0.000000 
-         5        0.000000 
-         6        0.000000 
-         7        0.000000 
-         8        0.000000 
+         1        0.100000 
+         2        0.200000 
+         3        0.300000 
+         4        0.400000 
+         5        0.500000 
+         6        0.600000 
+         7        0.700000 
+         8        0.800000 
+         9        0.900000 
+        10        1.000000 
 
 Subint    Length
 
-         1        0.000000
-         2        0.000000
-         3        0.000000
-         4        0.000000
-         5        0.000000
-         6        0.000000
-         7        0.000000
-         8        0.000000
-         9        0.000000
+         1        0.100000
+         2        0.100000
+         3        0.100000
+         4        0.100000
+         5        0.100000
+         6        0.100000
+         7        0.100000
+         8        0.100000
+         9        0.100000
+        10        0.100000
+        11        0.000000
 
 Subint    Quadrature point
 
-         1        0.000000
-         2        0.000000
-         3        0.000000
-         4        0.000000
-         5        0.000000
-         6        0.000000
-         7        0.000000
-         8        0.000000
-         9        0.000000
+         1        0.050000
+         2        0.150000
+         3        0.250000
+         4        0.350000
+         5        0.450000
+         6        0.550000
+         7        0.650000
+         8        0.750000
+         9        0.850000
+        10        0.950000
+        11        0.000000
 
 Subint  Left Node  Right Node
 
@@ -120,9 +76,11 @@ Subint  Left Node  Right Node
          6         5         6
          7         6         7
          8         7         8
-         9         0         0
+         9         8         9
+        10         9        10
+        11         0         0
 
-  Number of unknowns NU =        8
+  Number of unknowns NU =       10
 
   Node  Unknown
 
@@ -135,41 +93,25 @@ Subint  Left Node  Right Node
          6         6
          7         7
          8         8
+         9         9
+        10        10
 
 Printout of tridiagonal linear system:
 
 Equation  ALEFT  ADIAG  ARITE  RHS
 
-         1        0.000000            -nan            -nan            -nan
-         2            -nan            -nan            -nan            -nan
-         3            -nan            -nan            -nan            -nan
-         4            -nan            -nan            -nan            -nan
-         5            -nan            -nan            -nan            -nan
-         6            -nan            -nan            -nan            -nan
-         7            -nan            -nan            -nan            -nan
-         8            -nan            -nan        0.000000            -nan
+         1        0.000000       50.000000       50.000000        0.000000
+         2       20.000000       90.000000      150.000000        0.000000
+         3       80.000000      130.000000      210.000000        0.000000
+         4      180.000000      170.000000      230.000000        0.000000
+         5      240.000000      180.000000      230.000000        0.000000
+         6      230.000000      180.000000      250.000000        0.000000
+         7      230.000000      180.000000      230.000000        0.000000
+         8      230.000000      180.000000      170.000000        0.000000
+         9      230.000000      180.000000       70.000000        0.000000
+        10      150.000000       50.000000        0.000000        5.000000
 
 FEM1D:
   Normal end of execution.
 
-31 October 2015 01:19:01 PM
-
-Printout of tridiagonal linear system:
-
-Equation  ALEFT  ADIAG  ARITE  RHS
-
-
-FEM1D:
-  Normal end of execution.
-
-31 October 2015 01:19:01 PM
-
-Printout of tridiagonal linear system:
-
-Equation  ALEFT  ADIAG  ARITE  RHS
-
-
-FEM1D:
-  Normal end of execution.
-
-31 October 2015 01:19:01 PM
+02 November 2015 12:37:46 PM
