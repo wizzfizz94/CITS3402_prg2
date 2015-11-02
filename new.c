@@ -455,17 +455,12 @@ void geometry (){
       end++;
     }
     #pragma omp parallel for
-    for ( i = offset; i < end; i++ )
+    for ( i = offset-1; i < end; i++ )
     {
       xn[i]  =  ( ( double ) ( NSUB - i ) * xl 
       + ( double )          i   * xr ) 
       / ( double ) ( NSUB );
     }
-
-    /*printf("XN FOR RANK %d\n",rank);
-    for(i=0;i<NSUB+1;i++){
-      printf("%f\n",xn[i]);
-    }*/
 
     /* send data to master */
     MPI_Send(&xn[offset],slaveSize1,MPI_DOUBLE,MASTER,101,MPI_COMM_WORLD);
