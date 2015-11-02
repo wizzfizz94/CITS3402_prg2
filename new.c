@@ -30,6 +30,7 @@ void timestamp ( void );
 
   int numprocs, rank;
   MPI_Status status;
+  int provided;
 
   /* NSUB + 1 */
   int slaveSize1;
@@ -131,7 +132,10 @@ int main(int argc, char **argv){
     omp_set_num_threads(THREADS);
 
     /****************** MPI Initialisations ***************/
-    MPI_Init(&argc, &argv);
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
+    if(provided != MPI_THREAD_FUNNELED){
+      return 1;
+    }
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -409,7 +413,7 @@ void geometry (){
     Handle nodes 1 through nsub-1
     */
 
-    /* cannot parallelize due to nu */
+    /* cannot parallelize due to nu dependancies */
     for ( i = 1; i < NSUB; i++ )
     {
       nu = nu + 1;

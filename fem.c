@@ -131,7 +131,7 @@ int main(int argc, char const **argv)
 
 	char cmdNew[200];
 	char cmdOld[200];
-	sprintf(cmdNew, "mpirun -np %d new %ld %ld %d",TASKS,NSUB,NL,THREADS);
+	sprintf(cmdNew, "mpirun -np %d --hostfile my_hosts new %ld %ld %d",TASKS,NSUB,NL,THREADS);
 	sprintf(cmdOld, "./old %ld %ld",NSUB,NL);
 
 	//toggle between versions and perform TRIALS
@@ -144,8 +144,12 @@ int main(int argc, char const **argv)
 			ver++;
 		} else if (ver == 1){
 			printf("Running new version trail %d...\n",nc+1);
-			system(cmdNew);
-			printf("Succesfully complete.\n");
+			if(system(cmdNew)==0){
+				printf("Succesfully complete.\n");
+			}else{
+				printf("Failed to complete: MPI funnel not provided.\n");
+				exit(EXIT_FAILURE);
+			}
 			nc++;
 			ver = ver - 1;
 		}

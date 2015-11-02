@@ -6,7 +6,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include "mpi.h"
 
 //FUNCTON DECLARTIONS
 /******************************************************************************/
